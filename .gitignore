@@ -16,3 +16,6 @@
 Makefile
 test
 tmp/
+
+# Vim
+.*.swp
