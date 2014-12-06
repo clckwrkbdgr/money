@@ -9,6 +9,11 @@ Usage: money <amount> <name>
 Options:
     -i -  Interactive mode. Reads records from stdin in form <amount> <name>,
           one for each line.
+Interactive mode commands:
+    group NAME - start record group with name NAME. Each record will have the
+                 same prefix 'NAME: '. Groups cannot be nested, each statement
+                 will restart group.
+    end -        end group mode.
 EOF
 }
 
@@ -29,8 +34,17 @@ add_record() {
 }
 
 if [ "$1" == '-i' ]; then
-	while read line; do
-		add_record $line
+	group=''
+	while read command; do
+		if echo "$command" | grep -q '^group .'; then
+			group="$(echo "$command" | sed 's/^group //'): "
+		elif echo "$command" | grep -q '^end$'; then
+			group=''
+		else
+			amount=$(echo "$command" | sed 's/^\([^ ]\+\) .*/\1/')
+			name=$(echo "$command" | sed 's/^[^ ]\+ *//')
+			add_record $amount "${group}${name}"
+		fi
 	done
 elif [ "$1" == "--help" ]; then
 	usage
