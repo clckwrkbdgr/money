@@ -10,6 +10,8 @@ Options:
     -i -  Interactive mode. Reads records from stdin in form <amount> <name>,
           one for each line.
 Interactive mode commands:
+    account NAME - sets default account name so you wouldn't need to type it 
+	             into every record.
     group NAME - start record group with name NAME. Each record will have the
                  same prefix 'NAME: '. Groups cannot be nested, each statement
                  will restart group.
@@ -54,16 +56,25 @@ add_record() {
 
 if [ "$1" == '-i' ]; then
 	group=''
+	default_account=''
 	while read command; do
-		if echo "$command" | grep -q '^group .'; then
+		if echo "$command" | grep -q '^account .'; then
+			default_account="$(echo "$command" | sed 's/^account //')"
+		elif echo "$command" | grep -q '^group .'; then
 			group="$(echo "$command" | sed 's/^group //'): "
 		elif echo "$command" | grep -q '^end$'; then
 			group=''
 		else
-			account=$(echo "$command" | sed 's/^\([^ ]\+\) .*/\1/')
-			amount=$(echo "$command" | sed 's/^[^ ]\+ \+\([^ ]\+\) .*/\1/')
-			name=$(echo "$command" | sed 's/^[^ ]\+ \+[^ ]\+ *//')
-			add_record $amount "${group}${name}"
+			if [ -z "$default_account" ]; then
+				account=$(echo "$command" | sed 's/^\([^ ]\+\) .*/\1/')
+					command=$(echo "$command" | sed 's/^[^ ]\+ \+\(.*\)/\1/')
+			else
+				account="$default_account"
+			fi
+			amount=$(echo "$command" | sed 's/\([^ ]\+\) .*/\1/')
+				command=$(echo "$command" | sed 's/^[^ ]\+ \+\(.*\)/\1/')
+			name="$command"
+			add_record "$account" "$amount" "${group}${name}"
 		fi
 	done
 elif [ "$1" == "--help" ]; then
