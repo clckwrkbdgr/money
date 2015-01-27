@@ -4,7 +4,7 @@ DATAFILE=~/money.csv
 usage() {
 	cat <<EOF
 Simple finance tracking application.
-Usage: money <amount> <name>
+Usage: money <account> <amount> <name>
        money -i
 Options:
     -i -  Interactive mode. Reads records from stdin in form <amount> <name>,
@@ -19,18 +19,37 @@ EOF
 
 add_record() {
 	DATE=$(date +%FT%T)
-	AMOUNT=$1
+	ACCOUNT=$1
+	AMOUNT=$2
+	shift
 	shift
 	NAME=$*
 
+	if [ -z "$ACCOUNT" ]; then
+		echo 'Account should not be empty.'
+		return 1
+	fi
+
+	if echo "$ACCOUNT" | grep -q '[-+][0-9]\+[.][0-9]\{2\}'; then
+		echo 'It seems you have missed account name.'
+		return 1
+	fi
+
+	if echo "$ACCOUNT" | grep -q '^[A-Z]\+$'; then
+		true
+	else
+		echo 'Account should consist only of uppercase letters.'
+		return 1
+	fi
+
 	if echo $AMOUNT | grep -q '[-+][0-9]\+[.][0-9]\{2\}'; then
-		true;
+		true
 	else
 		echo 'Amount should be in form `*XXXXXX.CC`, where `*` should be either `+` for income or `-` for outcome.'
 		return 1
 	fi
 
-	echo -e "${DATE},${AMOUNT},${NAME}" >> "$DATAFILE"
+	echo -e "${DATE},${ACCOUNT},${AMOUNT},${NAME}" >> "$DATAFILE"
 }
 
 if [ "$1" == '-i' ]; then
@@ -41,8 +60,9 @@ if [ "$1" == '-i' ]; then
 		elif echo "$command" | grep -q '^end$'; then
 			group=''
 		else
-			amount=$(echo "$command" | sed 's/^\([^ ]\+\) .*/\1/')
-			name=$(echo "$command" | sed 's/^[^ ]\+ *//')
+			account=$(echo "$command" | sed 's/^\([^ ]\+\) .*/\1/')
+			amount=$(echo "$command" | sed 's/^[^ ]\+ \+\([^ ]\+\) .*/\1/')
+			name=$(echo "$command" | sed 's/^[^ ]\+ \+[^ ]\+ *//')
 			add_record $amount "${group}${name}"
 		fi
 	done
